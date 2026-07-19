@@ -12,40 +12,31 @@ A game night scheduling app that helps groups find the best date for everyone.
 ## Tech Stack
 
 - React 18 + Vite
-- Supabase (PostgreSQL database)
+- Express + SQLite (Node's built-in `node:sqlite`, no external database)
 - Tailwind CSS
-- Deployed on Netlify
+- Deployed on Railway (SQLite data on a persistent volume)
 
-## Setup
+## Development
 
-### 1. Create a Supabase Project
-
-1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Go to the SQL Editor and run the contents of `supabase-schema.sql`
-3. Get your project URL and anon key from Settings > API
-
-### 2. Configure Environment Variables
-
-Create a `.env` file:
-
-```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
-
-### 3. Install and Run
+Requires Node 22.5+.
 
 ```bash
 npm install
-npm run dev
+npm run build        # build the frontend once so the server has assets
+node server/index.js # API + static server on :3000
+npm run dev          # Vite dev server on :5173, proxies /api to :3000
 ```
 
-### 4. Deploy to Netlify
+The SQLite database is created automatically in `./data/` (or `$DATA_DIR`).
 
-1. Push your code to GitHub
-2. Connect the repo to Netlify
-3. Add the environment variables in Netlify's dashboard
-4. Deploy!
+## Deployment (Railway)
+
+The app runs as a single service: `npm run build` then `npm start`, which
+serves the built frontend and the API from one Express process.
+
+1. Attach a volume mounted at `/data`
+2. Set the environment variable `DATA_DIR=/data`
+3. Deploy with `railway up`
 
 ## Usage
 

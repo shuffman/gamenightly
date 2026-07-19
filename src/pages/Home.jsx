@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 
 export default function Home() {
   const [name, setName] = useState('')
@@ -15,19 +15,13 @@ export default function Home() {
     setLoading(true)
     setError(null)
 
-    const { data, error: insertError } = await supabase
-      .from('calendars')
-      .insert([{ name: name.trim() }])
-      .select()
-      .single()
-
-    if (insertError) {
+    try {
+      const data = await api.createCalendar(name.trim())
+      navigate(`/calendar/${data.id}`)
+    } catch {
       setError('Failed to create calendar. Please try again.')
       setLoading(false)
-      return
     }
-
-    navigate(`/calendar/${data.id}`)
   }
 
   return (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import DatePicker from '../components/DatePicker'
 
 export default function Respond() {
@@ -21,33 +21,15 @@ export default function Respond() {
     setLoading(true)
     setError(null)
 
-    // Load invitee by token
-    const { data: inviteeData, error: inviteeError } = await supabase
-      .from('invitees')
-      .select('*, calendars(*)')
-      .eq('token', token)
-      .single()
-
-    if (inviteeError || !inviteeData) {
-      setError('Invalid link. Please check your invitation URL.')
-      setLoading(false)
-      return
-    }
-
-    setInvitee(inviteeData)
-    setCalendar(inviteeData.calendars)
-
-    // Load existing availability
-    const { data: availabilityData } = await supabase
-      .from('availability')
-      .select('*')
-      .eq('invitee_id', inviteeData.id)
-
-    if (availabilityData) {
-      const dates = new Set(
-        availabilityData.filter((a) => a.available).map((a) => a.date)
+    try {
+      const { invitee, calendar, availability } = await api.getRespondData(token)
+      setInvitee(invitee)
+      setCalendar(calendar)
+      setSelectedDates(
+        new Set(availability.filter((a) => a.available).map((a) => a.date))
       )
-      setSelectedDates(dates)
+    } catch {
+      setError('Invalid link. Please check your invitation URL.')
     }
 
     setLoading(false)
@@ -67,30 +49,20 @@ export default function Respond() {
     setSaving(true)
     setSaved(false)
 
-    // Upsert availability
-    const { error: upsertError } = await supabase.from('availability').upsert(
-      {
-        invitee_id: invitee.id,
-        date: dateStr,
-        available: !isCurrentlySelected,
-      },
-      {
-        onConflict: 'invitee_id,date',
-      }
-    )
-
-    if (upsertError) {
-      // Revert on error
-      if (isCurrentlySelected) {
-        newSelectedDates.add(dateStr)
-      } else {
-        newSelectedDates.delete(dateStr)
-      }
-      setSelectedDates(newSelectedDates)
-      console.error('Failed to save:', upsertError)
-    } else {
+    try {
+      await api.setAvailability(token, dateStr, !isCurrentlySelected)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      // Revert on error
+      const reverted = new Set(newSelectedDates)
+      if (isCurrentlySelected) {
+        reverted.add(dateStr)
+      } else {
+        reverted.delete(dateStr)
+      }
+      setSelectedDates(reverted)
+      console.error('Failed to save:', err)
     }
 
     setSaving(false)

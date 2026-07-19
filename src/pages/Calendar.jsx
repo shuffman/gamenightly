@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import InviteeForm from '../components/InviteeForm'
 import InviteeList from '../components/InviteeList'
 import AvailabilityGrid from '../components/AvailabilityGrid'
@@ -21,45 +21,18 @@ export default function Calendar() {
     setLoading(true)
     setError(null)
 
-    // Load calendar
-    const { data: calendarData, error: calendarError } = await supabase
-      .from('calendars')
-      .select('*')
-      .eq('id', id)
-      .single()
+    try {
+      const calendarData = await api.getCalendar(id)
+      setCalendar(calendarData)
 
-    if (calendarError) {
-      setError('Calendar not found')
-      setLoading(false)
-      return
-    }
-
-    setCalendar(calendarData)
-
-    // Load invitees
-    const { data: inviteesData, error: inviteesError } = await supabase
-      .from('invitees')
-      .select('*')
-      .eq('calendar_id', id)
-      .order('created_at', { ascending: true })
-
-    if (inviteesError) {
-      setError('Failed to load invitees')
-      setLoading(false)
-      return
-    }
-
-    setInvitees(inviteesData || [])
-
-    // Load availability for all invitees
-    if (inviteesData && inviteesData.length > 0) {
-      const inviteeIds = inviteesData.map((i) => i.id)
-      const { data: availabilityData } = await supabase
-        .from('availability')
-        .select('*')
-        .in('invitee_id', inviteeIds)
-
+      const [inviteesData, availabilityData] = await Promise.all([
+        api.getInvitees(id),
+        api.getCalendarAvailability(id),
+      ])
+      setInvitees(inviteesData || [])
       setAvailability(availabilityData || [])
+    } catch {
+      setError('Calendar not found')
     }
 
     setLoading(false)

@@ -1,10 +1,5 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
-
-function generateToken() {
-  return Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15)
-}
+import { api } from '../lib/api'
 
 export default function InviteeForm({ calendarId, onInviteeAdded }) {
   const [name, setName] = useState('')
@@ -18,27 +13,15 @@ export default function InviteeForm({ calendarId, onInviteeAdded }) {
     setLoading(true)
     setError(null)
 
-    const token = generateToken()
-
-    const { data, error: insertError } = await supabase
-      .from('invitees')
-      .insert([{
-        calendar_id: calendarId,
-        name: name.trim(),
-        token,
-      }])
-      .select()
-      .single()
-
-    if (insertError) {
+    try {
+      const data = await api.addInvitee(calendarId, name.trim())
+      setName('')
+      onInviteeAdded(data)
+    } catch {
       setError('Failed to add invitee. Please try again.')
-      setLoading(false)
-      return
     }
 
-    setName('')
     setLoading(false)
-    onInviteeAdded(data)
   }
 
   return (
